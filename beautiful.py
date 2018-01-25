@@ -1,71 +1,99 @@
 import bs4 as bs
 import urllib.request
 import pandas as pd
-import numpy as np
 import os
-import string
+
 def network_infobox(urls, parent, their_network = False):
-    for row in urls:
-        for u in row:
-            if "http" not in u and "/wiki/" in u:
-                url = 'https://en.wikipedia.org' + u
-                # print(str(url))
-                sauce = urllib.request.urlopen(str(url)).read()
-                soup = bs.BeautifulSoup(sauce, 'lxml')
-                table = soup.table
-                if soup.find('table', class_='infobox vcard') is not None:
-                    table = soup.find('table', class_='infobox vcard')
-                elif soup.find('table', class_='infobox biography vcard'):
-                    table = soup.find('table', class_='infobox biography vcard')
-                if table is not None:
-                    table_rows = table.find_all('tr')
 
-                    counter = 1
-                    data = pd.DataFrame()
+    if their_network is True:
+        all_links = []
+        all_network = pd.DataFrame()
 
-                    for tr in table_rows:
-                        th = tr.find('th')
-                        if th is not None:
-                            title = th.text.strip()
-                            title = title.replace('\n', ' - ')
-                        else:
-                            title = ''
-                        data.at[counter, 'title'] = title
-                        td = tr.find('td')
-                        if td is not None:
-                            info = td.text.strip()
-                            info = info.replace('\n', ' - ')
-                        else:
-                            info = ''
-                        data.at[counter, 'info'] = info
-                        if title != '' or info != '':
-                            counter += 1
-                    counter = 1
-                    if their_network is True:
-                        table_rows = table.find_all('td')
-                        for td in table_rows:
-                            links = td.find_all('a', href=True)
-                            linked = []
-                            for i in links:
-                                if links is not None:
-                                    linked.append(i['href'])
-                            data.at[counter, 'linked'] = linked
-                            # linked = link['href']
-                            # linked = np.asarray(link)
-                            # data.at[counter, 'linked'] = linked
-                            counter += 1
-                    # print(data)
+    #Scrape every url fed into function
+    for u in urls:
+        if "http" not in u and "/wiki/" in u:
 
-                    if (len(data['info'])) > 1 and (len(data['title'])) > 1:
-                        url = url.replace('https://en.wikipedia.org/wiki/', '')
-                        file_name = 'C:/stat420/Baseball_graph/' + parent + '/' + url + '.csv'
-                        data.to_csv(file_name)
+            #Create URL to scrape
+            url = 'https://en.wikipedia.org' + u
+            # print(str(url))
+            sauce = urllib.request.urlopen(str(url)).read()
+            soup = bs.BeautifulSoup(sauce, 'lxml')
+            table = soup.table
+
+            #Narrow down to URL
+            if soup.find('table', class_='infobox vcard') is not None:
+                table = soup.find('table', class_='infobox vcard')
+            elif soup.find('table', class_='infobox biography vcard'):
+                table = soup.find('table', class_='infobox biography vcard')
+            if table is not None:
+                table_rows = table.find_all('tr')
+
+                counter = 1
+                data = pd.DataFrame()
+
+                #Scrape Title and Info
+                for tr in table_rows:
+
+                    #Scrape Title
+                    th = tr.find('th')
+                    if th is not None:
+                        title = th.text.strip()
+                        title = title.replace('\n', ' - ')
+                    else:
+                        title = ''
+                    data.at[counter, 'title'] = title
+
+                    #Scrape Info
+                    td = tr.find('td')
+                    if td is not None:
+                        info = td.text.strip()
+                        info = info.replace('\n', ' - ')
+                    else:
+                        info = ''
+                    data.at[counter, 'info'] = info
+                    if title != '' or info != '':
+                        counter += 1
+
+                url = url.replace('https://en.wikipedia.org/wiki/', '')
+                url = url.replace('/', '-')
+
+
+                #Scrape everyone's network and write to CSV if True
+                if their_network is True:
+
+                    #Scrape all links in infocard
+                    links = table.find_all('a', href=True)
+                    linked = []
+                    for i in links:
+                        if links is not None:
+                            linked.append(i['href'])
+                            all_links.append(i['href'])
+                    network = pd.DataFrame()
+                    network['links'] = linked
+                    file_name2 = 'C:/stat420/Baseball_graph/' + parent + '/' + url + '_network.csv'
+                    network.to_csv(file_name2)
+
+                #If info or title aren't empty, write to CSV
+                if (len(data['info'])) > 1 or (len(data['title'])) > 1:
+                    file_name = 'C:/stat420/Baseball_graph/' + parent + '/' + url + '.csv'
+                    data.to_csv(file_name)
+
+    #Write all network connections to CSV and return
+    if their_network is True:
+        all_network['links'] = all_links
+        network_file = 'C:/stat420/Baseball_graph/' + parent + '/full_network.csv'
+        all_network.to_csv(network_file)
+        return all_links
+
 def infobox_data(url, initial):
+
+    #Create URL to scrape
     url = 'https://en.wikipedia.org' + url
-    # print (url)
     sauce = urllib.request.urlopen(url).read()
     soup = bs.BeautifulSoup(sauce, 'lxml')
     table = soup.table
+
+    #Narrow down to infobox
     if soup.find('table', class_='infobox vcard') is not None:
         table = soup.find('table', class_='infobox vcard')
     elif soup.find('table', class_='infobox biography vcard'):
@@ -75,7 +103,10 @@ def infobox_data(url, initial):
     counter = 1
     data = pd.DataFrame()
 
+    #Get Title and Info
     for tr in table_rows:
+
+        #Get Title
         th = tr.find('th')
         if th is not None:
             title = th.text.strip()
@@ -84,6 +115,8 @@ def infobox_data(url, initial):
             title = ''
         data.at[counter, 'title'] = title
         td = tr.find('td')
+
+        #Get Info
         if td is not None:
             info = td.text.strip()
             info = info.replace('\n', ' - ')
@@ -92,45 +125,26 @@ def infobox_data(url, initial):
         data.at[counter, 'info'] = info
         if title != '' or info != '':
             counter += 1
-    counter = 1
-    table_rows = table.find_all('td')
-        links = td.find_all('a', href=True)
-        linked = []
-        for i in links:
-            if links is not None:
-                linked.append(i['href'])
-                # print (i['href'])
-        data.at[counter, 'linked'] = linked
-            # linked = link['href']
-            # linked = np.asarray(link)
-        # data.at[counter, 'linked'] = linked
-        counter += 1
 
-    # counter = 1
-    # table_rows = table.find_all('th')
-    # for th in table_rows:
-    #     links = th.find_all('a', href=True)
-    #     linked2 = []
-    #     for i in links:
-    #         if links is not None:
-    #             linked2.append(i['href'])
-    #     data.at[counter, 'linked2'] = linked2
-    #     # linked = link['href']
-    #     # linked = np.asarray(link)
-    #     # data.at[counter, 'linked'] = linked
-    #     counter += 1
-    # print (data)
-    #
-    linked = data['linked']
-    # print (linked)
+    #Get all links in the infocard
+    links = table.find_all('a', href=True)
+    linked = []
+    for i in links:
+        if links is not None:
+            linked.append(i['href'])
+    network = pd.DataFrame()
+    network['links'] = linked
+
+    #Write Title and Info to CSV & Write Network to CSV
     url = url.replace('https://en.wikipedia.org/wiki/','')
     if os.path.exists('C:/stat420/Baseball_graph/'+url) is False:
         os.makedirs('C:/stat420/Baseball_graph/'+url)
     file_name = 'C:/stat420/Baseball_graph/'+url+'/'+url+'.csv'
+    file_name2 = 'C:/stat420/Baseball_graph/'+url+'/'+url+'_network.csv'
     data.to_csv(file_name)
+    network.to_csv(file_name2)
     return linked, url
 
-
-infobox_data('/wiki/Donald_Trump', True)
-network_links, parent = infobox_data('/wiki/Donald_Trump', True)
-network_infobox(network_links, parent)
+network_links, parent = infobox_data('/wiki/Nikola_Tesla', True)
+all_networks = network_infobox(network_links, parent, True)
+# network_infobox(all_networks, parent, False)
