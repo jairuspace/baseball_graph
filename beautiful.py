@@ -94,6 +94,7 @@ def infobox_data(url, initial):
             counter += 1
     counter = 1
     table_rows = table.find_all('td')
+    for td in table_rows:
         links = td.find_all('a', href=True)
         linked = []
         for i in links:
