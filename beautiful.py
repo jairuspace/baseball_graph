@@ -2,6 +2,7 @@ import bs4 as bs
 import urllib.request
 import pandas as pd
 import os
+import wikipedia
 
 def network_infobox(urls, parent, their_network = False):
 
@@ -51,7 +52,7 @@ def network_infobox(urls, parent, their_network = False):
                     else:
                         info = ''
                     data.at[counter, 'info'] = info
-                    if title != '' or info != '':
+                    if title != '' and info != '':
                         counter += 1
 
                 url = url.replace('https://en.wikipedia.org/wiki/', '')
@@ -70,6 +71,13 @@ def network_infobox(urls, parent, their_network = False):
                             all_links.append(i['href'])
                     network = pd.DataFrame()
                     network['links'] = linked
+                    # backlinks = 0
+                    # for l in len(linked):
+                    #     if ('/wiki/' + parent) in page:
+                    #         backlinks += 1
+                    #         l += 1
+                    # network['backlinks'] = backlinks
+                    # print(network)
                     file_name2 = 'C:/stat420/Baseball_graph/' + parent + '/' + url + '_network.csv'
                     network.to_csv(file_name2)
 
@@ -85,10 +93,12 @@ def network_infobox(urls, parent, their_network = False):
         all_network.to_csv(network_file)
         return all_links
 
-def infobox_data(url, initial):
-
+def infobox_data(search, initial):
+    page = wikipedia.page(search)
+    page_content = page.content
     #Create URL to scrape
-    url = 'https://en.wikipedia.org' + url
+    url = page.url
+    # url = 'https://en.wikipedia.org' + url
     sauce = urllib.request.urlopen(url).read()
     soup = bs.BeautifulSoup(sauce, 'lxml')
     table = soup.table
@@ -123,7 +133,7 @@ def infobox_data(url, initial):
         else:
             info = ''
         data.at[counter, 'info'] = info
-        if title != '' or info != '':
+        if title != '' and info != '':
             counter += 1
 
     #Get all links in the infocard
@@ -146,5 +156,5 @@ def infobox_data(url, initial):
     return linked, url
 
 network_links, parent = infobox_data('/wiki/Nikola_Tesla', True)
-all_networks = network_infobox(network_links, parent, True)
+network_infobox(network_links, parent, True)
 # network_infobox(all_networks, parent, False)
